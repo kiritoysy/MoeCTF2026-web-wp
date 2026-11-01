@@ -57,7 +57,7 @@ print("总耗时：", round(time.time()-start, 2), "秒")
 
 拿到flag:
 
-<img width="802" height="488" alt="image" src="https://github.com/user-attachments/assets/28dbcc1f-310b-413d-a214-5475c0bd0196" />
+<img width="600"  alt="image" src="https://github.com/user-attachments/assets/28dbcc1f-310b-413d-a214-5475c0bd0196" />
 
 
 ##
