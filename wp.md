@@ -30,10 +30,35 @@ key7：访问login,先用游客登录再把cookie里面的user改成admin得到k
 
 <img width="600"  alt="image" src="https://github.com/user-attachments/assets/f5c1bfc3-a608-465d-9333-d73b50159a65" />
 
+## 当零来敲门
+SSH连接发现可以输入python命令，根据题目说明，要在短时间内发送1-500
+写个脚本:
+```python
+import requests
+import time
+
+URL = "http://127.0.0.1:8080/chat"
+s = requests.Session()
+start = time.time()
+for i in range(1, 501):
+    try:
+        r = s.post(
+            URL,
+            json={"user": "challenger", "msg": i},
+            timeout=3
+        )
+        if i % 50 == 0:
+            print(f"已发送 {i}/500，耗时 {time.time()-start:.2f} 秒")
+    except Exception as e:
+        print(f"发送 {i} 失败：{e}")
+        break
+print("总耗时：", round(time.time()-start, 2), "秒")
+```
+
+拿到flag:
+
+<img width="802" height="488" alt="image" src="https://github.com/user-attachments/assets/28dbcc1f-310b-413d-a214-5475c0bd0196" />
 
 
-
-
-##
 ##
 ##
