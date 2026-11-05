@@ -60,5 +60,35 @@ print("总耗时：", round(time.time()-start, 2), "秒")
 <img width="600"  alt="image" src="https://github.com/user-attachments/assets/28dbcc1f-310b-413d-a214-5475c0bd0196" />
 
 
-##
-##
+## 查分系统_revenge
+打开源码看到信息都被加密了
+
+<img width="1917" height="985" alt="image" src="https://github.com/user-attachments/assets/f2befaee-fd97-4dd7-b6f5-c7763894e01f" />
+
+根据题目提示，需要key,应该就是学号
+参考查分系统的信息，进行爆破即可获得flag
+
+## MoeCatchTheFrogs
+拿到9只青蛙即可获得flag,通过一直点击调查可以获得8只
+
+<img width="1858" height="852" alt="image" src="https://github.com/user-attachments/assets/8df685cb-f335-44dc-bdb7-2d01cb581e40" />
+
+F12可以看到有个session；
+eyJmcm9ncyI6WzAsMSwyLDMsNCw1LDYsN119.auwsfQ.HR-_T_E24aJsqjcpmqgZwgFk8I4
+三段式：内容+时间戳+签名
+解码是：{
+  "frogs": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+  ]
+}
+要把8加上去，因为密钥未知，需要爆破，这里使用flask-unsign工具，用字典爆破
+
+
+## 
