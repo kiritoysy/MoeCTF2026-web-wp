@@ -396,8 +396,14 @@ if __name__ == "__main__":
 污染成功，拿到flag
 
 ## bblogin
+分析app.py,发现是SSTI,注入点是用户名，并且限制了长度，输入{{config}}查看配置信息,发现了SECRET_KEY,应该是伪造session  
+<img width="1798" height="846" alt="image" src="https://github.com/user-attachments/assets/b22591bb-c0c4-477e-b14d-c05a8b380790" />  
+用flask伪造session拿到session=eyJ0b2tlbiI6ImFkbWluIn0.au8WzQ.wpuVdetHBgbtDtHH2Ct0tOHyF9E  
+然后传入cookie访问/user拿到flag  
+<img width="1101" height="396" alt="image" src="https://github.com/user-attachments/assets/02b2ce62-a770-4bc1-becb-f29eea72a8d3" />
 
 ## 我刚一提交就发现了三个问题
+
 ## 旧能源管理系统
 ## 黑市走私
 ## 七狗收费小说
